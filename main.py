@@ -1508,4 +1508,4 @@ def build_demo() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    build_demo().launch(share=False)
+    build_demo().launch(server_name="0.0.0.0", server_port=8000, share=False)
