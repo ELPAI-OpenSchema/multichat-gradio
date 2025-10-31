@@ -1,5 +1,3 @@
-"""Multi-chat Gradio UI with synchronized controls and responsive layout."""
-
 import hashlib
 import csv
 import datetime as _dt
@@ -17,6 +15,7 @@ STREAM_CANCEL: Dict[int, threading.Event] = {}
 # Global stop flag to handle early Stop clicks (before per-chat events exist)
 GLOBAL_STOP = threading.Event()
 
+
 def _begin_stream_cancel(idx: int) -> threading.Event:
     ev = threading.Event()
     # If a global stop was requested before this stream registered, honor it immediately.
@@ -25,15 +24,18 @@ def _begin_stream_cancel(idx: int) -> threading.Event:
     STREAM_CANCEL[idx] = ev
     return ev
 
+
 def _end_stream_cancel(idx: int) -> None:
     try:
         STREAM_CANCEL.pop(idx, None)
     except Exception:
         pass
 
+
 def _should_cancel(idx: int) -> bool:
     ev = STREAM_CANCEL.get(idx)
     return bool(ev.is_set()) if ev is not None else False
+
 
 def stop_generation(idx: int) -> bool:
     """Signal stop for a specific chat index. Returns True if a stream was active."""
@@ -42,6 +44,7 @@ def stop_generation(idx: int) -> bool:
         ev.set()
         return True
     return False
+
 
 # --- Helper to stop ALL active streams ---
 def stop_all_generation() -> int:
@@ -59,6 +62,7 @@ def stop_all_generation() -> int:
         except Exception:
             pass
     return count
+
 
 from dotenv import load_dotenv, set_key
 import gradio as gr
@@ -149,7 +153,11 @@ def _warm_openrouter():
         return
     try:
         # Use the default (randomized) model to warm the connection. Keep it extremely small and fast.
-        model = random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)
+        model = (
+            random.choice(MODEL_CHOICES)
+            if MODEL_CHOICES
+            else random.choice(FALLBACK_MODEL_CHOICES)
+        )
         # We intentionally avoid logging or touching UI state here.
         # A short timeout ensures we never block the UI on cold start.
         OPENROUTER_CLIENT.chat.completions.create(
@@ -157,11 +165,12 @@ def _warm_openrouter():
             messages=[{"role": "user", "content": "ping"}],
             temperature=0,
             max_tokens=1,
-            timeout=8
+            timeout=8,
         )
     except Exception:
         # Best-effort warmup; ignore all errors.
         pass
+
 
 # Kick off warmup in the background so app load isn't blocked.
 threading.Thread(target=_warm_openrouter, daemon=True).start()
@@ -185,7 +194,11 @@ def _load_model_choices() -> List[str]:
 
 
 MODEL_CHOICES = _load_model_choices()
-DEFAULT_MODEL = (random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES))
+DEFAULT_MODEL = (
+    random.choice(MODEL_CHOICES)
+    if MODEL_CHOICES
+    else random.choice(FALLBACK_MODEL_CHOICES)
+)
 
 
 def _apply_openrouter_settings(api_key: str, api_base: str) -> Tuple[str, List[str]]:
@@ -232,15 +245,17 @@ def _apply_openrouter_settings(api_key: str, api_base: str) -> Tuple[str, List[s
 
     OPENROUTER_CLIENT = _build_openrouter_client()
     MODEL_CHOICES = _load_model_choices()
-    DEFAULT_MODEL = (random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES))
+    DEFAULT_MODEL = (
+        random.choice(MODEL_CHOICES)
+        if MODEL_CHOICES
+        else random.choice(FALLBACK_MODEL_CHOICES)
+    )
 
     # Warm the newly configured client to reduce first-token latency on the next send
     threading.Thread(target=_warm_openrouter, daemon=True).start()
 
     if OPENROUTER_CLIENT is None:
-        status_prefix = (
-            "Settings applied, but OpenRouter client is unavailable. Verify the API key."
-        )
+        status_prefix = "Settings applied, but OpenRouter client is unavailable. Verify the API key."
     else:
         status_prefix = "Settings applied and OpenRouter client refreshed."
 
@@ -256,7 +271,7 @@ def update_openrouter_settings(
     """Callback hooked to the Settings tab to refresh credentials and dropdowns."""
     status_message, choices = _apply_openrouter_settings(api_key, api_base)
     choices = list(choices or FALLBACK_MODEL_CHOICES)
-    fallback_choice = (random.choice(choices) if choices else "")
+    fallback_choice = random.choice(choices) if choices else ""
 
     dropdown_updates = []
     for selected in current_models:
@@ -320,10 +335,7 @@ def _generate_openrouter_reply(
 
     messages = _prepare_chat_messages(message, history, instruction)
     response = OPENROUTER_CLIENT.chat.completions.create(
-        model=model_name,
-        messages=messages,
-        temperature=temperature,
-        timeout=30
+        model=model_name, messages=messages, temperature=temperature, timeout=30
     )
     choices = getattr(response, "choices", None) or []
     if not choices:
@@ -366,7 +378,7 @@ def _stream_openrouter_reply(
         messages=messages,
         temperature=temperature,
         stream=True,
-        timeout=30
+        timeout=30,
     )
 
     fragments: List[str] = []
@@ -475,9 +487,9 @@ def _append_stopped_tag(a_text: str) -> str:
         return "[stopped]"
     if marker in a_text:
         # Keep the badge on the next line; only modify the first (main) line.
-        parts = a_text.split('\n', 1)
+        parts = a_text.split("\n", 1)
         main_txt = parts[0]
-        rest = ('\n' + parts[1]) if len(parts) > 1 else ''
+        rest = ("\n" + parts[1]) if len(parts) > 1 else ""
         if "[stopped]" not in main_txt:
             main_txt = f"{main_txt} [stopped]"
         return main_txt + rest
@@ -498,9 +510,9 @@ def _inject_latency(a_text: str, ms: Optional[int]) -> str:
     if 'class="latency"' in a_text:
         return a_text
     # Always put the badge on a new line for readability.
-    if a_text.endswith('\n'):
+    if a_text.endswith("\n"):
         return a_text + badge
-    return a_text + '\n' + badge
+    return a_text + "\n" + badge
 
 
 def _handle_feedback_event(
@@ -513,9 +525,9 @@ def _handle_feedback_event(
     store: Dict[str, Any] = dict(feedback_store or {})
     entries: List[Dict[str, Any]] = [dict(entry) for entry in (log_entries or [])]
 
-    def finalize(payload: Sequence[Dict[str, Any]]) -> Tuple[
-        Dict[str, Any], List[Dict[str, Any]]
-    ]:
+    def finalize(
+        payload: Sequence[Dict[str, Any]],
+    ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
         sanitized_payload = _sanitize_log_entries(payload)
         return store, sanitized_payload
 
@@ -586,7 +598,11 @@ def add_chat(visible_flags: List[bool]) -> tuple:
     model_updates: List[Any] = []
     for idx in range(MAX_CHAT_SECTIONS):
         if next_index is not None and idx == next_index:
-            random_model = random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)
+            random_model = (
+                random.choice(MODEL_CHOICES)
+                if MODEL_CHOICES
+                else random.choice(FALLBACK_MODEL_CHOICES)
+            )
             model_updates.append(gr.update(value=random_model))
         else:
             model_updates.append(gr.update())
@@ -605,8 +621,6 @@ def toggle_sync(sync_enabled: bool) -> Tuple[bool, Dict[str, Any], Dict[str, Any
     button_text = UNBIND_LABEL if new_state else BIND_LABEL
     status_text = BOUND_STATUS if new_state else UNBOUND_STATUS
     return new_state, gr.update(value=button_text), gr.update(value=status_text)
-
-
 
 
 def close_chat(index: int, visible_flags: List[bool], *args):
@@ -662,7 +676,12 @@ def close_chat(index: int, visible_flags: List[bool], *args):
     )
 
 
-def _pump_stream(idx: int, iterator: Iterator[str], out_q: "Queue[Tuple[int, Optional[str]]]", stop_event: threading.Event) -> None:
+def _pump_stream(
+    idx: int,
+    iterator: Iterator[str],
+    out_q: "Queue[Tuple[int, Optional[str]]]",
+    stop_event: threading.Event,
+) -> None:
     """
     Consume a streaming iterator in a background thread and push partials into a shared queue.
     Sends (idx, None) once the stream is exhausted to signal completion.
@@ -783,7 +802,9 @@ def dispatch_message(
         idx = entry["idx"]
         iterator = entry["iterator"]
         stop_ev = _begin_stream_cancel(idx)
-        t = threading.Thread(target=_pump_stream, args=(idx, iterator, out_q, stop_ev), daemon=True)
+        t = threading.Thread(
+            target=_pump_stream, args=(idx, iterator, out_q, stop_ev), daemon=True
+        )
         t.start()
         active_set.add(idx)
 
@@ -807,10 +828,15 @@ def dispatch_message(
             else:
                 if first_token_ms.get(idx) is None:
                     try:
-                        first_token_ms[idx] = int((time.monotonic() - start_times[idx]) * 1000)
+                        first_token_ms[idx] = int(
+                            (time.monotonic() - start_times[idx]) * 1000
+                        )
                     except Exception:
                         first_token_ms[idx] = None
-                histories[idx][-1] = (message, _inject_latency(str(payload), first_token_ms.get(idx)))
+                histories[idx][-1] = (
+                    message,
+                    _inject_latency(str(payload), first_token_ms.get(idx)),
+                )
                 yield package_outputs(cleared_inputs, log_entries)
 
         # Check for explicit stop signals even if no chunks arrive
@@ -839,7 +865,10 @@ def dispatch_message(
         msg_idx = len(histories[idx]) - 1
         if msg_idx >= 0:
             u, a = histories[idx][msg_idx]
-            histories[idx][msg_idx] = (u, _inject_latency(str(a or ""), first_token_ms.get(idx)))
+            histories[idx][msg_idx] = (
+                u,
+                _inject_latency(str(a or ""), first_token_ms.get(idx)),
+            )
 
     if valid_indices:
         timestamp = _dt.datetime.now(_dt.timezone.utc).isoformat()
@@ -965,7 +994,11 @@ def send_or_stop(
     )
     # Determine which chats should show as streaming
     if sync_enabled:
-        start_targets = [i for i in range(len(histories)) if i < len(visible_flags) and bool(visible_flags[i])]
+        start_targets = [
+            i
+            for i in range(len(histories))
+            if i < len(visible_flags) and bool(visible_flags[i])
+        ]
     else:
         start_targets = [origin_index]
     any_yield = False
@@ -993,6 +1026,7 @@ def send_or_stop(
                 button_updates.append(gr.update())
                 streaming_values.append(False)
         yield (*out, *button_updates, *streaming_values)
+
 
 def download_logs(log_entries: Sequence[Dict[str, Any]]) -> Optional[str]:
     """Serialize the collected logs into a CSV payload for download."""
@@ -1024,7 +1058,12 @@ def _sanitize_model(value: Any) -> str:
     """Clamp model choices to known entries, defaulting to a fresh random choice each time."""
     if isinstance(value, str) and value in MODEL_CHOICES:
         return value
-    return random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)
+    return (
+        random.choice(MODEL_CHOICES)
+        if MODEL_CHOICES
+        else random.choice(FALLBACK_MODEL_CHOICES)
+    )
+
 
 # --- Propagate helpers ---
 def propagate_system(value: Any, visible_flags: List[bool], origin_index: int):
@@ -1071,7 +1110,11 @@ def _reconstruct_session_from_logs(
     system_prompts = [DEFAULT_SYSTEM_PROMPT for _ in range(MAX_CHAT_SECTIONS)]
     temperatures = [DEFAULT_TEMPERATURE for _ in range(MAX_CHAT_SECTIONS)]
     models = [
-        (random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES))
+        (
+            random.choice(MODEL_CHOICES)
+            if MODEL_CHOICES
+            else random.choice(FALLBACK_MODEL_CHOICES)
+        )
         for _ in range(MAX_CHAT_SECTIONS)
     ]
     visible_flags = [False for _ in range(MAX_CHAT_SECTIONS)]
@@ -1231,7 +1274,9 @@ def build_demo() -> gr.Blocks:
                     temperature_sliders: List[gr.Slider] = []
                     user_inputs: List[gr.Textbox] = []
                     action_buttons: List[gr.Button] = []
-                    streaming_states = [gr.State(False) for _ in range(MAX_CHAT_SECTIONS)]
+                    streaming_states = [
+                        gr.State(False) for _ in range(MAX_CHAT_SECTIONS)
+                    ]
                     clear_buttons: List[gr.Button] = []
                     close_buttons: List[gr.Button] = []
 
@@ -1245,7 +1290,9 @@ def build_demo() -> gr.Blocks:
                             ) as section:
                                 chat_sections.append(section)
                                 # gr.Markdown(f"#### Chat {idx + 1}")
-                                close_button = gr.Button("Close Chat", variant="primary")
+                                close_button = gr.Button(
+                                    "Close Chat", variant="primary"
+                                )
                                 close_buttons.append(close_button)
 
                                 system_prompt = gr.Textbox(
@@ -1257,10 +1304,16 @@ def build_demo() -> gr.Blocks:
                                 )
                                 system_inputs.append(system_prompt)
                                 # --- Propagate system prompt button ---
-                                sys_propagate_btn = gr.Button("Propagate", variant="secondary")
+                                sys_propagate_btn = gr.Button(
+                                    "Propagate", variant="secondary"
+                                )
                                 sys_propagate_btn.click(
                                     fn=propagate_system,
-                                    inputs=[system_prompt, visible_state, index_states[idx]],
+                                    inputs=[
+                                        system_prompt,
+                                        visible_state,
+                                        index_states[idx],
+                                    ],
                                     outputs=system_inputs,
                                     show_progress=False,
                                 )
@@ -1274,10 +1327,16 @@ def build_demo() -> gr.Blocks:
                                 )
                                 temperature_sliders.append(temperature)
                                 # --- Propagate temperature button ---
-                                temp_propagate_btn = gr.Button("Propagate", variant="secondary")
+                                temp_propagate_btn = gr.Button(
+                                    "Propagate", variant="secondary"
+                                )
                                 temp_propagate_btn.click(
                                     fn=propagate_temperature,
-                                    inputs=[temperature, visible_state, index_states[idx]],
+                                    inputs=[
+                                        temperature,
+                                        visible_state,
+                                        index_states[idx],
+                                    ],
                                     outputs=temperature_sliders,
                                     show_progress=False,
                                 )
@@ -1285,14 +1344,24 @@ def build_demo() -> gr.Blocks:
                                 model_selector = gr.Dropdown(
                                     label="Model selection",
                                     choices=MODEL_CHOICES,
-                                    value=(random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)),
+                                    value=(
+                                        random.choice(MODEL_CHOICES)
+                                        if MODEL_CHOICES
+                                        else random.choice(FALLBACK_MODEL_CHOICES)
+                                    ),
                                 )
                                 model_dropdowns.append(model_selector)
                                 # --- Propagate model button ---
-                                model_propagate_btn = gr.Button("Propagate", variant="secondary")
+                                model_propagate_btn = gr.Button(
+                                    "Propagate", variant="secondary"
+                                )
                                 model_propagate_btn.click(
                                     fn=propagate_model,
-                                    inputs=[model_selector, visible_state, index_states[idx]],
+                                    inputs=[
+                                        model_selector,
+                                        visible_state,
+                                        index_states[idx],
+                                    ],
                                     outputs=model_dropdowns,
                                     show_progress=False,
                                 )
@@ -1328,7 +1397,11 @@ def build_demo() -> gr.Blocks:
 
                                 chatbot.like(
                                     fn=_handle_feedback_event,
-                                    inputs=[feedback_state, log_state, index_states[idx]],
+                                    inputs=[
+                                        feedback_state,
+                                        log_state,
+                                        index_states[idx],
+                                    ],
                                     outputs=[feedback_state, log_state],
                                     queue=False,
                                 )
@@ -1363,7 +1436,12 @@ def build_demo() -> gr.Blocks:
                     add_button.click(
                         fn=add_chat,
                         inputs=visible_state,
-                        outputs=[visible_state, *chat_sections, add_button, *model_dropdowns],
+                        outputs=[
+                            visible_state,
+                            *chat_sections,
+                            add_button,
+                            *model_dropdowns,
+                        ],
                         show_progress=False,
                     )
 
@@ -1427,15 +1505,28 @@ def build_demo() -> gr.Blocks:
                             *user_inputs,
                         ]
                         clear_outputs = [*chatbots, *user_inputs, *history_states]
-                        clear_outputs_extended = [*clear_outputs, action_buttons[idx], streaming_states[idx]]
+                        clear_outputs_extended = [
+                            *clear_outputs,
+                            action_buttons[idx],
+                            streaming_states[idx],
+                        ]
+
                         def _clear_and_reset(*cargs):
                             # cargs mirrors clear_inputs; we just call dispatch_clear and then append resets for button/state
                             gen = dispatch_clear(*cargs)
                             out = tuple(gen) if isinstance(gen, tuple) else gen
                             # dispatch_clear returns a tuple; ensure it's concrete
                             if isinstance(out, tuple):
-                                return (*out, gr.update(value="Send", variant="primary"), False)
-                            return (*out, gr.update(value="Send", variant="primary"), False)
+                                return (
+                                    *out,
+                                    gr.update(value="Send", variant="primary"),
+                                    False,
+                                )
+                            return (
+                                *out,
+                                gr.update(value="Send", variant="primary"),
+                                False,
+                            )
 
                         clear_buttons[idx].click(
                             fn=_clear_and_reset,
