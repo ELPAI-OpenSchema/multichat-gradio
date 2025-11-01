@@ -11,6 +11,7 @@ spec:
       containers:
         - name: multichat-gradio
           image: cr.elpai.org/elpai-openschema/multichat-gradio
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:
