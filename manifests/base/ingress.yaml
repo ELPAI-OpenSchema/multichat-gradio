@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: multichat-gradio
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/rewritepath: /
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: osc.elpai.org
+      http:
+        paths:
+          - path: /multichat
+            pathType: Prefix
+            backend:
+              service:
+                name: multichat-gradio
+                port:
+                  number: 8000
