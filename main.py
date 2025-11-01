@@ -1602,15 +1602,9 @@ def build_demo() -> gr.Blocks:
 
 
 demo_app = build_demo()
-fastapi_app = FastAPI()
+fastapi_app = FastAPI(root_path="/multichat")
 
-
-@fastapi_app.get("/")
-async def redirect_root() -> RedirectResponse:
-    return RedirectResponse(url="/multichat/", status_code=308)
-
-
-app = gr.mount_gradio_app(fastapi_app, demo_app, path="/multichat")
+app = gr.mount_gradio_app(fastapi_app, demo_app, path="")
 
 
 if __name__ == "__main__":
