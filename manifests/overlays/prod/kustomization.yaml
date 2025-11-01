@@ -6,5 +6,9 @@ namespace: elpai-openschema-prod
 resources:
   - ../../base
 
+patchesStrategicMerge:
+  - deployment.yaml
+  - ingress.yaml
+
 commonLabels:
   app.kubernetes.io/environment: prod
