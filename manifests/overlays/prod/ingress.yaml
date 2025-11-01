@@ -4,7 +4,6 @@ metadata:
   name: multichat-gradio
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   ingressClassName: traefik
   rules:
@@ -18,6 +17,3 @@ spec:
                 name: multichat-gradio
                 port:
                   number: 8000
-  tls:
-    - hosts:
-        - osc-stg.elpai.org
