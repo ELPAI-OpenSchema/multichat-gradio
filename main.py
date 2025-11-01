@@ -1,20 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 
-# Serve the app on both root paths and the /multichat prefix so an ingress
-# that forwards the /multichat path (without stripping) will still work.
-app = FastAPI(root_path="/multichat")
+app = FastAPI()
 
-# Also expose the same endpoints under the /multichat prefix. This is the
-# simplest fix when the ingress controller does not strip the prefix.
-@app.get("/")
-async def multichat_root():
-    return {"msg": "it works!"}
-
-
-@app.get("/ping")
-async def multichat_ping():
-    return {"msg": "pong!"}
+@app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+async def catch_all(request: Request, full_path: str):
+    return {"msg": request.url.path}
 
 
 if __name__ == "__main__":
