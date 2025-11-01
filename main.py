@@ -9,6 +9,7 @@ import threading
 import time
 from queue import Queue, Empty
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple
+import gradio as gr
 
 # --- Stream cancel registry (per chat index) ---
 STREAM_CANCEL: Dict[int, threading.Event] = {}
