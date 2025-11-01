@@ -11,7 +11,6 @@ from queue import Queue, Empty
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 import gradio as gr
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
 
 # --- Stream cancel registry (per chat index) ---
 STREAM_CANCEL: Dict[int, threading.Event] = {}
@@ -1602,18 +1601,12 @@ def build_demo() -> gr.Blocks:
 
 
 demo_app = build_demo()
-fastapi_app = FastAPI()
-
-
-@fastapi_app.get("/")
-async def redirect_root() -> RedirectResponse:
-    return RedirectResponse(url="/multichat/", status_code=308)
-
+fastapi_app = FastAPI(root_path="/multichat")
 
 app = gr.mount_gradio_app(
     fastapi_app,
     demo_app,
-    path="/multichat",
+    path="/",
     root_path="/multichat",
 )
 
