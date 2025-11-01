@@ -1,8 +1,8 @@
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: multichat-strip-prefix
+  name: multichat-gradio-middleware
 spec:
-  stripPrefix:
-    prefixes:
-      - /multichat
+  replacePathRegex:
+    regex: ^/multichat(?!/assets)(.*)
+    replacement: $1
