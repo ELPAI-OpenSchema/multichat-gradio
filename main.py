@@ -284,17 +284,36 @@ def update_openrouter_settings(
 
 
 CSS = """
-html, body {height: 100%; margin: 0; background: #f3f4f6;}
-#root, .gradio-container {min-height: 100vh; display: flex;}
+:root {
+    --app-background-color: #f3f4f6;
+    --chat-section-background-color: #ffffff;
+    --chat-section-border-color: #e5e7eb;
+    --latency-text-color: #9ca3af;
+}
+
+body.dark,
+body[data-theme*="dark"],
+html.dark,
+html[data-theme*="dark"],
+:root[data-theme*="dark"],
+[data-theme*="dark"] body {
+    --app-background-color: #0f172a;
+    --chat-section-background-color: #1f2937;
+    --chat-section-border-color: #334155;
+    --latency-text-color: #94a3b8;
+}
+
+html, body {height: 100%; margin: 0; background: var(--app-background-color, #f3f4f6);}
+#root, .gradio-container {min-height: 100vh; display: flex; background: transparent;}
 .app-shell {flex: 1; display: flex; flex-direction: column; gap: 1rem; padding-bottom: 1rem;}
 .control-row {display: flex; gap: 0.75rem;}
 .control-row button {flex: 1 1 0;}
 .chat-grid {flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 1rem; align-content: flex-start;}
-.chat-section {flex: 1 1 320px; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; background: #ffffff; display: flex; flex-direction: column; gap: 0.75rem;}
+.chat-section {flex: 1 1 320px; min-width: 280px; border: 1px solid var(--chat-section-border-color, #e5e7eb); border-radius: 8px; padding: 1rem; background: var(--chat-section-background-color, #ffffff); display: flex; flex-direction: column; gap: 0.75rem;}
 .chat-section h4 {margin: 0;}
 .chat-section .gradio-chatbot, .chat-section [data-testid="chatbot"] {flex: 1 1 auto;}
 .full-width {width: 100%;}
-.latency { font-size: 10px; color: #9ca3af; margin-left: .4rem; }
+.latency { font-size: 10px; color: var(--latency-text-color, #9ca3af); margin-left: .4rem; }
 """
 
 BIND_LABEL = "Bind chats"
