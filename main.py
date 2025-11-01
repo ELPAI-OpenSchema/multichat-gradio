@@ -10,6 +10,8 @@ import time
 from queue import Queue, Empty
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 import gradio as gr
+from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 
 # --- Stream cancel registry (per chat index) ---
 STREAM_CANCEL: Dict[int, threading.Event] = {}
@@ -1599,10 +1601,19 @@ def build_demo() -> gr.Blocks:
     return demo
 
 
+demo_app = build_demo()
+fastapi_app = FastAPI()
+
+
+@fastapi_app.get("/")
+async def redirect_root() -> RedirectResponse:
+    return RedirectResponse(url="/multichat/", status_code=308)
+
+
+app = gr.mount_gradio_app(fastapi_app, demo_app, path="/multichat")
+
+
 if __name__ == "__main__":
-    build_demo().launch(
-        server_name="0.0.0.0",
-        server_port=8000,
-        share=False,
-        root_path="/multichat",
-    )
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
