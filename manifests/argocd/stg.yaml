@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: multichat-gradio-stg
+  namespace: argocd
+spec:
+  destination:
+    namespace: elpai-openschema-stg
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: manifests/overlays/stg
+    repoURL: https://github.com/ELPAI-OpenSchema/multichat-gradio.git
+    targetRevision: HEAD
+  sources: []
