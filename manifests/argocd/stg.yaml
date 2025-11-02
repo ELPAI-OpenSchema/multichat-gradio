@@ -4,9 +4,8 @@ metadata:
   name: multichat-gradio-stg
   namespace: argocd
   annotations:
-    argocd-image-updater.argoproj.io/image-list: multichat-gradio=cr.elpai.org/elpai-openschema/multichat-gradio
-    argocd-image-updater.argoproj.io/multichat-gradio.allow-tags: regexp:^stg
-    argocd-image-updater.argoproj.io/multichat-gradio.update-strategy: digest
+    argocd-image-updater.argoproj.io/image-list: multichat-gradio=cr.elpai.org/elpai-openschema/multichat-gradio:stg
+    argocd-image-updater.argoproj.io/multichat-gradio.update-strategy: latest
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
