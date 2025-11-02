@@ -83,7 +83,7 @@ else:
     OPENROUTER_API_KEY = ""
     OPENROUTER_API_BASE = DEFAULT_API_BASE
 
-DEFAULT_SYSTEM_PROMPT = "You are a concise, friendly assistant."
+DEFAULT_SYSTEM_PROMPT = "You are a concise, friendly assistant!"
 FALLBACK_MODEL_CHOICES = [
     "openrouter/auto",
     "anthropic/claude-3.5-sonnet",

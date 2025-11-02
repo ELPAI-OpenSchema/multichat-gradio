@@ -77,7 +77,7 @@ jobs:
             ${{ steps.props.outputs.image }}:stg
             ${{ steps.props.outputs.image }}:stg-${{ github.sha }}
 
-      # :vX.Y.Z, :latest
+      # :<sha> :vX.Y.Z, :latest
       - name: Build & Push (release)
         if: startsWith(github.ref, 'refs/tags/')
         uses: docker/build-push-action@v6
@@ -95,4 +95,5 @@ jobs:
             org.opencontainers.image.ref.name=${{ github.ref_name }}
           tags: |
             ${{ steps.props.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.props.outputs.image }}:${{ github.sha }}
             ${{ steps.props.outputs.image }}:latest

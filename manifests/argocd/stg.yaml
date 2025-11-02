@@ -3,13 +3,26 @@ kind: Application
 metadata:
   name: multichat-gradio-stg
   namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: multichat-gradio=cr.elpai.org/elpai-openschema/multichat-gradio
+    argocd-image-updater.argoproj.io/multichat-gradio.allow-tags: regexp:^stg
+    argocd-image-updater.argoproj.io/multichat-gradio.update-strategy: digest
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   destination:
     namespace: elpai-openschema-stg
     server: https://kubernetes.default.svc
-  project: default
   source:
     path: manifests/overlays/stg
     repoURL: https://github.com/ELPAI-OpenSchema/multichat-gradio.git
     targetRevision: HEAD
   sources: []
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+      enabled: true
+    syncOptions:
+      - CreateNamespace=true
