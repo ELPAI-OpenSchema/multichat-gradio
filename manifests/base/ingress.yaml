@@ -4,7 +4,7 @@ metadata:
   name: multichat-gradio
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/custom-response-headers: Content-Security-Policy:upgrade-insecure-requests
+    traefik.ingress.kubernetes.io/router.middlewares: elpai-openschema-upgrade-insecure-requests@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
