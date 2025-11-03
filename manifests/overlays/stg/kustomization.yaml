@@ -9,6 +9,7 @@ resources:
 patchesStrategicMerge:
   - deployment.yaml
   - ingress.yaml
+  - middleware.yaml
 
 commonLabels:
   app.kubernetes.io/environment: stg
