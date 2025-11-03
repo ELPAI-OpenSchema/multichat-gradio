@@ -4,8 +4,8 @@ metadata:
   name: multichat-gradio-prod
   namespace: argocd
   annotations:
-    argocd-image-updater.argoproj.io/image-list: multichat-gradio=cr.elpai.org/elpai-openschema/multichat-gradio:latest
-    argocd-image-updater.argoproj.io/multichat-gradio.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/image-list: multichat-gradio=cr.elpai.org/elpai-openschema/multichat-gradio
+    argocd-image-updater.argoproj.io/multichat-gradio.update-strategy: semver
 spec:
   destination:
     namespace: elpai-openschema-prod
