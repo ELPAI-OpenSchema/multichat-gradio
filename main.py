@@ -59,7 +59,7 @@ def stop_all_generation() -> int:
             pass
     return count
 
-from dotenv import load_dotenv, set_key
+from dotenv import load_dotenv
 import gradio as gr
 import random
 
@@ -85,6 +85,7 @@ FALLBACK_MODEL_CHOICES = [
     "anthropic/claude-3.5-sonnet",
     "openai/gpt-4o-mini",
 ]
+DEFAULT_MODEL_ID = "openrouter/auto"
 DEFAULT_TEMPERATURE = 0.7
 MAX_CHAT_SECTIONS = 10
 CSV_FIELDNAMES = [
@@ -192,14 +193,43 @@ def _build_openrouter_client() -> Optional["OpenAI"]:
 OPENROUTER_CLIENT = _build_openrouter_client()
 
 
+# --- Model choice helpers ---
+def _preferred_default_model(choices: Sequence[str]) -> Optional[str]:
+    """Return the preferred default model from a list of choices."""
+    if DEFAULT_MODEL_ID in choices:
+        return DEFAULT_MODEL_ID
+    return choices[0] if choices else None
+
+
+def _random_model_choice(choices: Sequence[str], *, exclude: Optional[Set[str]] = None) -> Optional[str]:
+    """Pick a random model from the provided choices."""
+    if exclude:
+        filtered = [choice for choice in choices if choice not in exclude]
+    else:
+        filtered = list(choices)
+    choices = filtered
+    if not choices:
+        return None
+    return random.choice(choices)
+
+
+def _compute_default_model(choices: Sequence[str]) -> Optional[str]:
+    """Select the default model only when an OpenRouter client is available."""
+    if OPENROUTER_CLIENT is None:
+        return None
+    return _preferred_default_model(choices)
+
+
 # --- OpenRouter warmup helper ---
 def _warm_openrouter():
     """Fire a tiny no-op request in the background to reduce first-token latency on the first message."""
     if OPENROUTER_CLIENT is None:
         return
     try:
-        # Use the default (randomized) model to warm the connection. Keep it extremely small and fast.
-        model = random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)
+        # Use the preferred default model to warm the connection. Keep it extremely small and fast.
+        model = _preferred_default_model(MODEL_CHOICES) or _preferred_default_model(FALLBACK_MODEL_CHOICES)
+        if not model:
+            return
         # We intentionally avoid logging or touching UI state here.
         # A short timeout ensures we never block the UI on cold start.
         OPENROUTER_CLIENT.chat.completions.create(
@@ -235,7 +265,7 @@ def _load_model_choices() -> List[str]:
 
 
 MODEL_CHOICES = _load_model_choices()
-DEFAULT_MODEL = (random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES))
+DEFAULT_MODEL = _compute_default_model(MODEL_CHOICES)
 
 
 def _apply_openrouter_settings(api_key: str, api_base: str) -> Tuple[str, List[str]]:
@@ -259,22 +289,9 @@ def _apply_openrouter_settings(api_key: str, api_base: str) -> Tuple[str, List[s
     persistence_notes: List[str] = []
 
     if env_exists:
-        try:
-            set_key(ENV_FILE, "OPENROUTER_API_KEY", sanitized_key)
-        except Exception as exc:  # noqa: BLE001
-            persistence_notes.append(
-                f"Could not update OPENROUTER_API_KEY in .env ({exc})."
-            )
-
-        try:
-            set_key(ENV_FILE, "OPENROUTER_API_BASE", sanitized_base)
-        except Exception as exc:  # noqa: BLE001
-            persistence_notes.append(
-                f"Could not update OPENROUTER_API_BASE in .env ({exc})."
-            )
-
-        if not persistence_notes:
-            persistence_notes.append("Settings saved to .env.")
+        persistence_notes.append(
+            "Settings applied for this session only; .env remains unchanged."
+        )
     else:
         persistence_notes.append(
             "No .env file detected; settings kept in-memory for this session."
@@ -282,7 +299,7 @@ def _apply_openrouter_settings(api_key: str, api_base: str) -> Tuple[str, List[s
 
     OPENROUTER_CLIENT = _build_openrouter_client()
     MODEL_CHOICES = _load_model_choices()
-    DEFAULT_MODEL = (random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES))
+    DEFAULT_MODEL = _compute_default_model(MODEL_CHOICES)
 
     # Warm the newly configured client to reduce first-token latency on the next send
     threading.Thread(target=_warm_openrouter, daemon=True).start()
@@ -306,11 +323,20 @@ def update_openrouter_settings(
     """Callback hooked to the Settings tab to refresh credentials and dropdowns."""
     status_message, choices = _apply_openrouter_settings(api_key, api_base)
     choices = list(choices or FALLBACK_MODEL_CHOICES)
-    fallback_choice = (random.choice(choices) if choices else "")
+    default_choice: Optional[str]
+    if DEFAULT_MODEL and DEFAULT_MODEL in choices:
+        default_choice = DEFAULT_MODEL
+    elif OPENROUTER_CLIENT is None:
+        default_choice = None
+    else:
+        default_choice = _preferred_default_model(choices)
 
     dropdown_updates = []
     for selected in current_models:
-        new_value = selected if selected in choices else fallback_choice
+        if isinstance(selected, str) and selected in choices:
+            new_value: Optional[str] = selected
+        else:
+            new_value = default_choice
         dropdown_updates.append(gr.update(choices=choices, value=new_value))
 
     key_update = gr.update(value="")
@@ -320,13 +346,13 @@ def update_openrouter_settings(
 
 
 CSS = """
-html, body {height: 100%; margin: 0; background: #f3f4f6;}
-#root, .gradio-container {min-height: 100vh; display: flex;}
+html, body {height: 100%; margin: 0; background: var(--body-background-fill, #f3f4f6);}
+#root, .gradio-container {min-height: 100vh; display: flex; background: inherit;}
 .app-shell {flex: 1; display: flex; flex-direction: column; gap: 1rem; padding-bottom: 1rem;}
 .control-row {display: flex; gap: 0.75rem;}
 .control-row button {flex: 1 1 0;}
 .chat-grid {flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 1rem; align-content: flex-start;}
-.chat-section {flex: 1 1 320px; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; background: #ffffff; display: flex; flex-direction: column; gap: 0.75rem;}
+.chat-section {flex: 1 1 320px; min-width: 280px; border: 1px solid var(--border-color-primary, #e5e7eb); border-radius: 8px; padding: 1rem; background: var(--block-background-fill, #ffffff); display: flex; flex-direction: column; gap: 0.75rem;}
 .chat-section h4 {margin: 0;}
 .chat-section .gradio-chatbot, .chat-section [data-testid="chatbot"] {flex: 1 1 auto;}
 .full-width {width: 100%;}
@@ -576,7 +602,7 @@ def _handle_feedback_event(
 
 
 def add_chat(visible_flags: List[bool]) -> tuple:
-    """Reveal the next hidden chat section and randomize its model selection.
+    """Reveal the next hidden chat section, keeping the primary chat on default and randomizing others when possible.
     Ensures that existing visible chats occupy indices 0..k-1 (compacted),
     and the newly added chat appears at index k (append-to-end).
     """
@@ -601,12 +627,28 @@ def add_chat(visible_flags: List[bool]) -> tuple:
     section_updates = [gr.update(visible=f) for f in compact_flags]
     can_add = not all(compact_flags)
 
-    # Model updates: only set the newly revealed section to a random model
+    # Model updates: first chat retains default; subsequent chats randomize when possible
     model_updates: List[Any] = []
     for idx in range(MAX_CHAT_SECTIONS):
         if next_index is not None and idx == next_index:
-            random_model = random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)
-            model_updates.append(gr.update(value=random_model))
+            if next_index == 0:
+                new_value = DEFAULT_MODEL
+            elif OPENROUTER_CLIENT is not None:
+                exclusions: Set[str] = set()
+                if isinstance(DEFAULT_MODEL, str) and DEFAULT_MODEL:
+                    exclusions.add(DEFAULT_MODEL)
+                exclusions.add(DEFAULT_MODEL_ID)
+                new_value = _random_model_choice(
+                    MODEL_CHOICES or FALLBACK_MODEL_CHOICES,
+                    exclude=exclusions,
+                ) or DEFAULT_MODEL
+            else:
+                new_value = DEFAULT_MODEL
+
+            if new_value is None:
+                model_updates.append(gr.update())
+            else:
+                model_updates.append(gr.update(value=new_value))
         else:
             model_updates.append(gr.update())
 
@@ -1019,10 +1061,19 @@ def _sanitize_temperature(value: Any) -> float:
 
 
 def _sanitize_model(value: Any) -> str:
-    """Clamp model choices to known entries, defaulting to a fresh random choice each time."""
+    """Clamp model choices to known entries, defaulting to the preferred model when needed."""
     if isinstance(value, str) and value in MODEL_CHOICES:
         return value
-    return random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)
+    candidate = DEFAULT_MODEL
+    if isinstance(candidate, str) and candidate:
+        return candidate
+    candidate = _preferred_default_model(MODEL_CHOICES)
+    if isinstance(candidate, str) and candidate:
+        return candidate
+    candidate = _preferred_default_model(FALLBACK_MODEL_CHOICES)
+    if isinstance(candidate, str) and candidate:
+        return candidate
+    raise RuntimeError("No model choices available.")
 
 # --- Propagate helpers ---
 def propagate_system(value: Any, visible_flags: List[bool], origin_index: int):
@@ -1068,10 +1119,12 @@ def _reconstruct_session_from_logs(
     histories: List[List[Tuple[str, str]]] = [[] for _ in range(MAX_CHAT_SECTIONS)]
     system_prompts = [DEFAULT_SYSTEM_PROMPT for _ in range(MAX_CHAT_SECTIONS)]
     temperatures = [DEFAULT_TEMPERATURE for _ in range(MAX_CHAT_SECTIONS)]
-    models = [
-        (random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES))
-        for _ in range(MAX_CHAT_SECTIONS)
-    ]
+    default_model = (
+        DEFAULT_MODEL
+        or _preferred_default_model(MODEL_CHOICES)
+        or _preferred_default_model(FALLBACK_MODEL_CHOICES)
+    )
+    models = [default_model for _ in range(MAX_CHAT_SECTIONS)]
     visible_flags = [False for _ in range(MAX_CHAT_SECTIONS)]
     feedback_state: Dict[str, str] = {}
     sync_enabled = True
@@ -1289,7 +1342,7 @@ def build_demo() -> gr.Blocks:
                                 model_selector = gr.Dropdown(
                                     label="Model selection",
                                     choices=MODEL_CHOICES,
-                                    value=(random.choice(MODEL_CHOICES) if MODEL_CHOICES else random.choice(FALLBACK_MODEL_CHOICES)),
+                                    value=DEFAULT_MODEL,
                                 )
                                 model_dropdowns.append(model_selector)
                                 # --- Propagate model button ---
