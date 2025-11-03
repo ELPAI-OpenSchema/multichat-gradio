@@ -1047,14 +1047,15 @@ def download_logs(log_entries: Sequence[Dict[str, Any]]) -> Any:
         writer.writerow({field: entry.get(field, "") for field in CSV_FIELDNAMES})
 
     csv_bytes = buffer.getvalue().encode("utf-8")
-    file_name = f"chat_logs.csv"
+    temp_dir = tempfile.mkdtemp(prefix="multichat-logs-")
+    file_path = os.path.join(temp_dir, "chat_logs.csv")
 
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
-    temp_file.write(csv_bytes)
-    temp_file.flush()
-    temp_file.close()
+    with open(file_path, "wb") as csv_file:
+        csv_file.write(csv_bytes)
+        csv_file.flush()
+        os.fsync(csv_file.fileno())
 
-    return gr.update(value=NamedString(temp_file.name))
+    return gr.update(value=NamedString(file_path))
 
 
 def _sanitize_temperature(value: Any) -> float:
