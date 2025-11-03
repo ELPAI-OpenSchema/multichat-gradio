@@ -1,9 +1,0 @@
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: upgrade-insecure-requests
-  namespace: elpai-openschema-stg
-spec:
-  headers:
-    customResponseHeaders:
-      Content-Security-Policy: "upgrade-insecure-requests"
