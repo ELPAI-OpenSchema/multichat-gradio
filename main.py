@@ -83,7 +83,7 @@ else:
     OPENROUTER_API_KEY = ""
     OPENROUTER_API_BASE = DEFAULT_API_BASE
 
-DEFAULT_SYSTEM_PROMPT = "You are a concise, friendly assistant."
+DEFAULT_SYSTEM_PROMPT = "You are a concise, friendly assistant! Answer as best you can."
 FALLBACK_MODEL_CHOICES = [
     "openrouter/auto",
     "anthropic/claude-3.5-sonnet",
@@ -1615,6 +1615,7 @@ def build_demo() -> gr.Blocks:
 
     return demo
 
+
 if __name__ == "__main__":
     demo = build_demo()
     demo.launch(
@@ -1623,4 +1624,3 @@ if __name__ == "__main__":
         share=False,
         root_path="/multichat",
     )
-    
