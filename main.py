@@ -5,7 +5,6 @@ import csv
 import datetime as _dt
 import io
 import os
-import tempfile
 import uuid
 import threading
 from queue import Queue, Empty
@@ -62,6 +61,8 @@ def stop_all_generation() -> int:
 from dotenv import load_dotenv
 import gradio as gr
 import random
+import tempfile
+from gradio.utils import NamedString
 
 try:
     from openai import OpenAI
@@ -1034,21 +1035,26 @@ def send_or_stop(
                 streaming_values.append(False)
         yield (*out, *button_updates, *streaming_values)
 
-def download_logs(log_entries: Sequence[Dict[str, Any]]) -> Optional[str]:
-    """Serialize the collected logs into a CSV payload for download."""
+def download_logs(log_entries: Sequence[Dict[str, Any]]) -> Any:
+    """Serialize collected logs to CSV bytes and push them to the download button."""
     if not log_entries:
-        return None
+        return gr.update(value=None)
 
-    temp_dir = tempfile.mkdtemp(prefix="multichat-logs-")
-    file_path = os.path.join(temp_dir, "chat_logs.csv")
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=CSV_FIELDNAMES)
+    writer.writeheader()
+    for entry in log_entries:
+        writer.writerow({field: entry.get(field, "") for field in CSV_FIELDNAMES})
 
-    with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=CSV_FIELDNAMES)
-        writer.writeheader()
-        for entry in log_entries:
-            writer.writerow({field: entry.get(field, "") for field in CSV_FIELDNAMES})
+    csv_bytes = buffer.getvalue().encode("utf-8")
+    file_name = f"chat_logs.csv"
 
-    return file_path
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+    temp_file.write(csv_bytes)
+    temp_file.flush()
+    temp_file.close()
+
+    return gr.update(value=NamedString(temp_file.name))
 
 
 def _sanitize_temperature(value: Any) -> float:
